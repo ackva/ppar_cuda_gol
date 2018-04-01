@@ -37,10 +37,10 @@ __device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int t
         dest_subdomain[tx_r + 2][ty_r + 1] = read_cell (source_domain, tx, ty, 1, 0, domain_x, domain_y);
 
     /*  third step :
-     *  - the first thread of the last row reads its bottom-left neighbor
-     *  - the last thread of the last row reads its bottom-right neighbor
+     *  - the first thread of the last two rows read their bottom-left neighbor
+     *  - the last thread of the last two rows read their bottom-right neighbor
      */
-    if (ty_r == blockDim.y - 1)
+    if (ty_r > blockDim.y - 3)
     {
         if (ty_x == 0)
             dest_subdomain[tx_r][ty_r + 2] = read_cell (source_domain, tx, ty, -1, 1, domain_x, domain_y);
