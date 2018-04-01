@@ -19,10 +19,50 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int myself = read_cell(source_domain, tx, ty, 0, 0,
 	                       domain_x, domain_y);
     
-    // TODO: Read the 8 neighbors and count number of blue and red
+    // Read the 8 neighbors and count number of blue and red
+    int blue = 0, red = 0;
 
-	// TODO: Compute new value
-	
-	// TODO: Write it in dest_domain
+    //  if the cell is not empty, break out on alive neighboor count exceeding 3
+    for (int x_offset = -1 ; x_offset < 2  &&
+                                (!myself || (red + blue < 4)) ; x_offset++)
+    {
+        for (int y_offset = -1 ; y_offset < 2 &&
+                                (!myself || (red + blue < 4)) ; y_offset++)
+        {
+            //  ignore self
+            if (x_offset == 0 && y_offset == 0)
+                continue;
+
+            switch (read_cell (domain, tx, ty, x_offset, y_offset, domain_x, domain_y))
+            {
+                case 1: red++;  break;
+                case 2: blue++; break;
+                default:    break;
+            }
+        }
+    }
+
+	// Compute new value
+	int alive = red + blue;
+    //  empty cell case
+    if (!myself)
+    {
+        if (alive == 3)
+            if (blue < red)
+                myself = 1;
+            else
+                myself = 2;
+    }
+    //  live cell cases
+    else
+    {
+        //  die cases
+        if (alive != 2 && alive != 3)
+            myself = 0;
+        //  else survive
+    }
+
+	// Write it in dest_domain
+    dest_domain[ty * domain_x + tx] = myself;
 }
 
