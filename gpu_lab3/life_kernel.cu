@@ -20,14 +20,14 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
 	                       domain_x, domain_y);
     
     // Read the 8 neighbors and count number of blue and red
-    int blue = 0, red = 0;
+    int blue = 0, red = 0, alive = 0;
 
     //  if the cell is not empty, break out on alive neighboor count exceeding 3
     for (int x_offset = -1 ; x_offset < 2  &&
-                                (!myself || (red + blue < 4)) ; x_offset++)
+                                (!myself || (alive < 4)) ; x_offset++)
     {
         for (int y_offset = -1 ; y_offset < 2 &&
-                                (!myself || (red + blue < 4)) ; y_offset++)
+                                (!myself || (alive < 4)) ; y_offset++)
         {
             //  ignore self
             if (x_offset == 0 && y_offset == 0)
@@ -35,15 +35,15 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
 
             switch (read_cell (source_domain, tx, ty, x_offset, y_offset, domain_x, domain_y))
             {
-                case 1: red++;  break;
-                case 2: blue++; break;
+                case 1: red++;  alive++;    break;
+                case 2: blue++; alive++;    break;
                 default:    break;
             }
         }
     }
 
 	// Compute new value
-	int alive = red + blue;
+    
     //  empty cell case
     if (!myself)
     {
