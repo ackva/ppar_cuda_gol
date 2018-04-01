@@ -4,6 +4,8 @@
 
 #include "life_kernel.cu"
 
+#define WARP_SIZE 32
+
 void init_data(int * domain, int domain_x, int domain_y)
 {
 	for(int i = 0; i != domain_y; ++i) {
@@ -43,6 +45,35 @@ void print_domain(int* domain, int domain_x, int domain_y, int* red, int* blue) 
 	}
 }
 
+/*
+ * Calculate the grid dimensions
+ *
+ */
+int compute_gridsize (int block_size, int *dim_x, int *dim_y)
+{
+    if (block_size % WARP_SIZE != 0)
+    {
+        fprintf (stderr, "Invalid block size : %d threads.\n", block_size);
+        return -1;
+    }
+
+    int x = block_size / 2;
+    int y = 2;
+    int distance = x - y;
+
+    while (distance > y)
+    {
+        x = x / 2;
+        y *= 2;
+        distance = distance / 4;
+    }
+
+    *dim_x = x;
+    *dim_y = y;
+
+    return 0;
+}
+
 int main(int argc, char ** argv)
 {
     // Definition of parameters
@@ -54,9 +85,15 @@ int main(int argc, char ** argv)
     int steps = 2;
     
     int threads_per_block = 128;
+    /*
     int blocks_x = domain_x / (threads_per_block * cells_per_word);
     int blocks_y = domain_y;
-    
+    */
+    int blocks_x, blocks_y, err;
+
+    if (err = compute_gridsize (threads_per_block, &blocks_x, &blocks_y) < 0)
+        return err;
+
     dim3  grid(blocks_x, blocks_y);	// CUDA grid dimensions
     dim3  threads(threads_per_block);	// CUDA block dimensions
 
@@ -68,7 +105,7 @@ int main(int argc, char ** argv)
 	CUDA_SAFE_CALL(cudaMalloc((void**)&domain_gpu[0], domain_size));
     CUDA_SAFE_CALL(cudaMalloc((void**)&domain_gpu[1], domain_size));
 
-    int * domain_cpu = (int*)malloc(domain_size);
+    int * domain_cpu = (int*) malloc(domain_size);
 
 	// Arrays of dimensions pitch * domain.y
 
@@ -84,7 +121,7 @@ int main(int argc, char ** argv)
     CUDA_SAFE_CALL(cudaEventRecord(start, 0));
 
     // Kernel execution
-    int shared_mem_size = 0;
+    int shared_mem_size = (blocks_x + 2) * (blocks_y + 2) * sizeof(int);
     for(int i = 0; i < steps; i++) {
 	    life_kernel<<< grid, threads, shared_mem_size >>>(domain_gpu[i%2],
 	    	domain_gpu[(i+1)%2], domain_x, domain_y);
