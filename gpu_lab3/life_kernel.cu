@@ -33,7 +33,7 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
             if (x_offset == 0 && y_offset == 0)
                 continue;
 
-            switch (read_cell (domain, tx, ty, x_offset, y_offset, domain_x, domain_y))
+            switch (read_cell (source_domain, tx, ty, x_offset, y_offset, domain_x, domain_y))
             {
                 case 1: red++;  break;
                 case 2: blue++; break;
