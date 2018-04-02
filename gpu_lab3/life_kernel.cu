@@ -108,7 +108,7 @@ __device__ int new_value (int subdomain[][], int tx_r, int ty_r)
 
 // Compute kernel
 __global__ void life_kernel(int * source_domain, int * dest_domain,
-    int domain_x, int domain_y)
+    int domain_x, int domain_y, int sm_x, int sm_y)
 {
     //  thread IDs : absolute
     int tx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -118,7 +118,7 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int tx_r = threadIdx.x;
     int ty_r = threadIdx.y;
 
-    extern _shared_ int subdomain[blockDim.x + 2][blockDim.y + 2];
+    extern _shared_ int subdomain[sm_x][sm_y];
     
     //  load values in shared memory
     read_to_sm (source_domain, tx, ty, tx_r, ty_r, subdomain, domain_x, domain_y);

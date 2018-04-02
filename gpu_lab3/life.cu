@@ -6,6 +6,8 @@
 
 #define WARP_SIZE 32
 
+#define MIN(x, y) (x < y) ? x : y
+
 void init_data(int * domain, int domain_x, int domain_y)
 {
 	for(int i = 0; i != domain_y; ++i) {
@@ -85,8 +87,10 @@ int main(int argc, char ** argv)
     // Start timer
     CUDA_SAFE_CALL(cudaEventRecord(start, 0));
 
+    //  Compute the necessary shared memory size
+    int shared_mem_size = MIN(blocks_x + 2, domain_x) * MIN(blocks_y + 2, domain_y) * sizeof(int);
+    
     // Kernel execution
-    int shared_mem_size = (blocks_x + 2) * (blocks_y + 2) * sizeof(int);
     for(int i = 0; i < steps; i++) {
 	    life_kernel<<< grid, threads, shared_mem_size >>>(domain_gpu[i%2],
 	    	domain_gpu[(i+1)%2], domain_x, domain_y);
