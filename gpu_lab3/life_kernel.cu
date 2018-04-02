@@ -28,26 +28,10 @@ __device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int t
 
     /*  second step : 
      *  - the last two rows of threads read their immediate down neighbor
-     *  - the last two columns of threads read their immediate right neighbor
-     *  nb 4 of the threads belong to both groups and have to perform both reads
      */
-    if (tx_r > blockDim.x - 3)
-        dest_subdomain[tx_r + 1][ty_r + 2] = read_cell (source_domain, tx, ty, 0, 1, domain_x, domain_y);
-    if (ty_r > blockDim.y - 3)
-        dest_subdomain[tx_r + 2][ty_r + 1] = read_cell (source_domain, tx, ty, 1, 0, domain_x, domain_y);
-
-    /*  third step :
-     *  - the first thread of the last two rows read their bottom-left neighbor
-     *  - the last thread of the last two rows read their bottom-right neighbor
-     */
-    if (ty_r > blockDim.y - 3)
-    {
-        if (ty_x == 0)
-            dest_subdomain[tx_r][ty_r + 2] = read_cell (source_domain, tx, ty, -1, 1, domain_x, domain_y);
-    
-        else if (ty_x == blockDim.x - 1)
-            dest_subdomain[tx_r + 2][ty_r + 2] = read_cell (source_domain, tx, ty, 1, 1, domain_x, domain_y);
-    }
+    if (blockDim.y < domain_y)
+        if (tx_r > blockDim.x - 3)
+            dest_subdomain[tx_r + 1][ty_r + 2] = read_cell (source_domain, tx, ty, 0, 1, domain_x, domain_y);
 }
 
 /*
@@ -68,7 +52,7 @@ __device__ int new_value (int subdomain[][], int tx_r, int ty_r)
     //  read self
     int myself = subdomain[tx_r + 1][ty_r + 1];
 
-    int blue = 0, red = 0, alive = 0;
+    int blue = 0, alive = 0;
 
     //  if the cell is not empty, break out on alive neighboor count exceeding 3
     for (int x_offset = -1 ; x_offset < 2  &&
@@ -81,11 +65,21 @@ __device__ int new_value (int subdomain[][], int tx_r, int ty_r)
             if (x_offset == 0 && y_offset == 0)
                 continue;
 
+            //  if 7 values have been read and no live neighbor was found, don't read the last value
+            if (y_offset == 1 && x_offset == 1 && alive == 0)
+                break;
+
             switch (subdomain[tx_r + 1 + x_offset][ty_r + 1 + y_offset])
             {
-                case 1: red++;  alive++;    break;
-                case 2: blue++; alive++;    break;
-                default:    break;
+                case 1: 
+                    alive++;
+                    break;
+                case 2: 
+                    blue++;
+                    alive++;
+                    break;
+                default:    
+                    break;
             }
         }
     }
@@ -94,7 +88,7 @@ __device__ int new_value (int subdomain[][], int tx_r, int ty_r)
     if (!myself)
     {
         if (alive == 3)
-            if (blue < red)
+            if (blue == 0 || blue == 1)
                 return 1;
             else
                 return 2;
@@ -109,7 +103,7 @@ __device__ int new_value (int subdomain[][], int tx_r, int ty_r)
         //  else survive : no changes needed
     }
 
-    return -1;
+    return myself;
 }
 
 // Compute kernel
@@ -132,11 +126,9 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
 	// Compute new value
     int change = new_value (subdomain, tx_r, ty_r);
 
-	// Write it in dest_domain if necessary
-    if (change < 0)
-        //  done
-        return;
-    else
-        dest_domain[ty * domain_x + tx] = change;
+	// Write it in dest_domain
+    dest_domain[ty * domain_x + tx] = change;
+
+    _syncthreads();
 }
 

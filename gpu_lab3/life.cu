@@ -45,35 +45,6 @@ void print_domain(int* domain, int domain_x, int domain_y, int* red, int* blue) 
 	}
 }
 
-/*
- * Calculate the grid dimensions
- *
- */
-int compute_gridsize (int block_size, int *dim_x, int *dim_y)
-{
-    if (block_size % WARP_SIZE != 0)
-    {
-        fprintf (stderr, "Invalid block size : %d threads.\n", block_size);
-        return -1;
-    }
-
-    int x = block_size / 2;
-    int y = 2;
-    int distance = x - y;
-
-    while (distance > y)
-    {
-        x = x / 2;
-        y *= 2;
-        distance = distance / 4;
-    }
-
-    *dim_x = x;
-    *dim_y = y;
-
-    return 0;
-}
-
 int main(int argc, char ** argv)
 {
     // Definition of parameters
@@ -84,17 +55,11 @@ int main(int argc, char ** argv)
     
     int steps = 2;
     
-    int threads_per_block = 128;
-    /*
+    int threads_per_block = 1024;
     int blocks_x = domain_x / (threads_per_block * cells_per_word);
-    int blocks_y = domain_y;
-    */
-    int blocks_x, blocks_y, err;
+    int blocks_y = domain_y / 8;
 
-    if (err = compute_gridsize (threads_per_block, &blocks_x, &blocks_y) < 0)
-        return err;
-
-    dim3  grid(blocks_x, blocks_y);	// CUDA grid dimensions
+    dim3  grid(blocks_x, blocks_y);	    // CUDA grid dimensions
     dim3  threads(threads_per_block);	// CUDA block dimensions
 
     // Allocation of arrays
