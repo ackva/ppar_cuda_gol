@@ -88,12 +88,14 @@ int main(int argc, char ** argv)
     CUDA_SAFE_CALL(cudaEventRecord(start, 0));
 
     //  Compute the necessary shared memory size
-    int shared_mem_size = MIN(blocks_x + 2, domain_x) * MIN(blocks_y + 2, domain_y) * sizeof(int);
-    
+    int sm_x = MIN(blocks_x + 2, domain_x);
+    int sm_y = MIN(blocks_y + 2, domain_y);
+    int shared_mem_size = sm_x * sm_y * sizeof(int);
+
     // Kernel execution
     for(int i = 0; i < steps; i++) {
 	    life_kernel<<< grid, threads, shared_mem_size >>>(domain_gpu[i%2],
-	    	domain_gpu[(i+1)%2], domain_x, domain_y);
+	    	domain_gpu[(i+1)%2], domain_x, domain_y, sm_x, sm_y);
 	}
 
     // Stop timer

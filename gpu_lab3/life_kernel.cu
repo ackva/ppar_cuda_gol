@@ -20,7 +20,7 @@ __device__ int read_cell(int * source_domain, int x, int y, int dx, int dy,
  *  @param domain_x:        original domain's x dimension size
  *  @param domain_y:        original domain's y dimension size
  */
-__device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int ty_r, int dest_subdomain[][],
+__device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int ty_r, int ** dest_subdomain,
     unsigned int domain_x, unsigned int domain_y)
 {
     //  first step : every thread reads its cell's upper-left neighbor
@@ -47,7 +47,7 @@ __device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int t
  *  @return:            the cell's new value if a change is necessary
  *                      -1 if no change is needed
  */
-__device__ int new_value (int subdomain[][], int tx_r, int ty_r)
+__device__ int new_value (int ** subdomain, int tx_r, int ty_r)
 {
     //  read self
     int myself = subdomain[tx_r + 1][ty_r + 1];
@@ -118,7 +118,7 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int tx_r = threadIdx.x;
     int ty_r = threadIdx.y;
 
-    extern _shared_ int subdomain[sm_x][sm_y];
+    extern __shared__ int subdomain[sm_x][sm_y];
     
     //  load values in shared memory
     read_to_sm (source_domain, tx, ty, tx_r, ty_r, subdomain, domain_x, domain_y);
@@ -129,6 +129,6 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
 	// Write it in dest_domain
     dest_domain[ty * domain_x + tx] = change;
 
-    _syncthreads();
+    __syncthreads();
 }
 
