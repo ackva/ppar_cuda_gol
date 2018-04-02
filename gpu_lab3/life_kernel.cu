@@ -20,18 +20,18 @@ __device__ int read_cell(int * source_domain, int x, int y, int dx, int dy,
  *  @param domain_x:        original domain's x dimension size
  *  @param domain_y:        original domain's y dimension size
  */
-__device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int ty_r, int ** dest_subdomain,
+__device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int ty_r, int *** dest_subdomain,
     unsigned int domain_x, unsigned int domain_y)
 {
     //  first step : every thread reads its cell's upper-left neighbor
-    dest_subdomain[tx_r][ty_r] = read_cell (source_domain, tx, ty, -1, -1, domain_x, domain_y);
+    *dest_subdomain[tx_r][ty_r] = read_cell (source_domain, tx, ty, -1, -1, domain_x, domain_y);
 
     /*  second step : 
      *  - the last two rows of threads read their immediate down neighbor
      */
     if (blockDim.y < domain_y)
         if (tx_r > blockDim.x - 3)
-            dest_subdomain[tx_r + 1][ty_r + 2] = read_cell (source_domain, tx, ty, 0, 1, domain_x, domain_y);
+            *dest_subdomain[tx_r + 1][ty_r + 2] = read_cell (source_domain, tx, ty, 0, 1, domain_x, domain_y);
 }
 
 /*
@@ -47,10 +47,10 @@ __device__ void read_to_sm (int * source_domain, int tx, int ty, int tx_r, int t
  *  @return:            the cell's new value if a change is necessary
  *                      -1 if no change is needed
  */
-__device__ int new_value (int ** subdomain, int tx_r, int ty_r)
+__device__ int new_value (int *** subdomain, int tx_r, int ty_r)
 {
     //  read self
-    int myself = subdomain[tx_r + 1][ty_r + 1];
+    int myself = *subdomain[tx_r + 1][ty_r + 1];
 
     int blue = 0, alive = 0;
 
@@ -69,7 +69,7 @@ __device__ int new_value (int ** subdomain, int tx_r, int ty_r)
             if (y_offset == 1 && x_offset == 1 && alive == 0)
                 break;
 
-            switch (subdomain[tx_r + 1 + x_offset][ty_r + 1 + y_offset])
+            switch (*subdomain[tx_r + 1 + x_offset][ty_r + 1 + y_offset])
             {
                 case 1: 
                     alive++;
@@ -118,13 +118,13 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int tx_r = threadIdx.x;
     int ty_r = threadIdx.y;
 
-    extern __shared__ int subdomain[sm_x][sm_y];
+    extern __shared__ int **subdomain;
     
     //  load values in shared memory
-    read_to_sm (source_domain, tx, ty, tx_r, ty_r, subdomain, domain_x, domain_y);
+    read_to_sm (source_domain, tx, ty, tx_r, ty_r, &subdomain, domain_x, domain_y);
 
 	// Compute new value
-    int change = new_value (subdomain, tx_r, ty_r);
+    int change = new_value (&subdomain, tx_r, ty_r);
 
 	// Write it in dest_domain
     dest_domain[ty * domain_x + tx] = change;
