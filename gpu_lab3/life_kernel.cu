@@ -118,16 +118,85 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int tx_r = threadIdx.x;
     int ty_r = threadIdx.y;
 
+    //  control
+
     extern __shared__ int **subdomain;
     
-    //  load values in shared memory
-    read_to_sm (source_domain, tx, ty, tx_r, ty_r, &subdomain, domain_x, domain_y);
+    /*  
+     *  Load values in shared memory
+     */
 
-	// Compute new value
-    int change = new_value (&subdomain, tx_r, ty_r);
+    //  first step : every thread reads its cell's upper-left neighbor
+    subdomain[ty_r][tx_r] = read_cell (source_domain, tx, ty, -1, -1, domain_x, domain_y);
+
+    /*  second step : 
+     *  - the last two rows of threads read their bottom-left neighbor
+     */
+    if (sm_y < domain_y)
+        //  last two rows
+        if (tx_r > blockDim.x - 3)
+            subdomain[ty_r + 1][tx_r] = read_cell (source_domain, tx, ty, -1, 1, domain_x, domain_y);
+
+	/*
+     *  Compute new value
+     */
+
+    //  read self
+    int myself = subdomain[tx_r + 1][ty_r + 1];
+
+    int blue = 0, alive = 0;
+
+    //  if the cell is not empty, break out on alive neighboor count exceeding 3
+    for (int y_offset = -1 ; y_offset < 2  &&
+                                (!myself || (alive < 4)) ; y_offset++)
+    {
+        for (int x_offset = -1 ; x_offset < 2 &&
+                                (!myself || (alive < 4)) ; x_offset++)
+        {
+            //  ignore self
+            if (x_offset == 0 && y_offset == 0)
+                continue;
+
+            //  if 7 values have been read and no live neighbor was found, don't read the last value
+            if (y_offset == 1 && x_offset == 1 && alive == 0)
+                break;
+
+            switch (subdomain[tx_r + 1 + x_offset][ty_r + 1 + y_offset])
+            {
+                case 1: 
+                    alive++;
+                    break;
+                case 2: 
+                    blue++;
+                    alive++;
+                    break;
+                default:    
+                    break;
+            }
+        }
+    }
+
+    //  empty cell case
+    if (!myself)
+    {
+        if (alive == 3)
+            if (blue == 0 || blue == 1)
+                myself = 1;
+            else
+                myself = 2;
+    }
+    //  live cell cases
+    else
+    {
+        //  die cases
+        if (alive != 2 && alive != 3)
+            myself = 0;
+
+        //  else survive : no changes needed
+    }
 
 	// Write it in dest_domain
-    dest_domain[ty * domain_x + tx] = change;
+    dest_domain[ty * domain_x + tx] = myself;
 
     __syncthreads();
 }
