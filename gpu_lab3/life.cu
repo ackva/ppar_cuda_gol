@@ -68,28 +68,28 @@ int main(int argc, char ** argv)
         switch (c)
         {
             case 'x':
-                if ((cval = optarg) % WARP_SIZE == 0 && cval > 0)
+                if ((cval = atoi (optarg)) % WARP_SIZE == 0 && cval > 0)
                     domain_x = cval;
                 else
                     fprintf (stderr, 
-                        "Invalid domain size '%d' : \
-                        dimension_x must be a positive multiple of warp size (%d).\n", cval, WARP_SIZE);
+                        "Invalid domain size '%s' : \
+                        dimension_x must be a positive multiple of warp size (%d).\n", optarg, WARP_SIZE);
                 break;
             case 'y':
-                if ((cval = optarg) > 0)
+                if ((cval = atoi (optarg)) > 0)
                     domain_y = optarg;
                 else
                     fprintf (stderr,
-                        "Invalid domain size '%d' :\
-                        dimension_y must be a positive integer.\n", cval);
+                        "Invalid domain size '%s' :\
+                        dimension_y must be a positive integer.\n", optarg);
                 break;
             case 's':
-                if ((cval = optarg) > 0)
+                if ((cval = atoi (optarg)) > 0)
                     steps = cval;
                 else
                     fprintf (stderr,
-                        "Invalid number of steps '%d' :\
-                        must be a positive integer.\n", cval);
+                        "Invalid number of steps '%s' :\
+                        must be a positive integer.\n", optarg);
                 break;
         }
     }
