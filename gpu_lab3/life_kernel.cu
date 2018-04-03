@@ -22,7 +22,7 @@ __device__ int read_cell(int * source_domain, int x, int y, int dx, int dy,
  *  @param blue:        destination for the cell's blue neighbor count
  *
  */
-__device__ void read_values (int **subdomain, int txr, int tyr,
+__device__ void read_values (int subdomain[BLOCK_DIM_Y+2][BLOCK_DIM_X], int txr, int tyr,
     int *self, int *alive, int *blue)
 {
     int self_ = 0, alive_ = 0, blue_ = 0, current;
