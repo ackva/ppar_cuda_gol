@@ -1,12 +1,17 @@
 
 #include "utils.h"
 #include <stdlib.h>
+#include <getopt.h>
 
 #include "life_kernel.cu"
 
 #define WARP_SIZE 32
+#define DEFAULT_DIM_X 64
+#define DEFAULT_DIM_Y 64
+#define DEFAULT_STEPS 2
+#define DEFAULT_CELLS_PER_WORD 1
 
-#define MIN(x, y) (x < y) ? x : y
+#define MIN(x,y) ((x < y) ? x : y)
 
 void init_data(int * domain, int domain_x, int domain_y)
 {
@@ -50,19 +55,50 @@ void print_domain(int* domain, int domain_x, int domain_y, int* red, int* blue) 
 int main(int argc, char ** argv)
 {
     // Definition of parameters
-    int domain_x = 128;	// Multiple of threads_per_block * cells_per_word
-    int domain_y = 128;
-    
-    int cells_per_word = 1;
-    
-    int steps = 2;
-    
-    int threads_per_block = 1024;
-    int blocks_x = domain_x / (threads_per_block * cells_per_word);
-    int blocks_y = domain_y / 8;
+    int domain_x = DEFAULT_DIM_X;
+    int domain_y = DEFAULT_DIM_Y;
+    int cells_per_word = DEFAULT_CELLS_PER_WORD;
+    int steps = DEFAULT_STEPS;
 
-    dim3  grid(blocks_x, blocks_y);	    // CUDA grid dimensions
-    dim3  threads(threads_per_block);	// CUDA block dimensions
+    int c, cval;
+    while ((c = getopt (argc, argv, "x:y:s:")) != -1)
+    {
+        switch (c)
+        {
+            case 'x':
+                if ((cval = optarg) % WARP_SIZE == 0 && cval > 0)
+                    domain_x = cval;
+                else
+                    fprintf (stderr, 
+                        "Invalid domain size '%d' : \
+                        dimension_x must be a positive multiple of warp size (%d).\n", cval, WARP_SIZE);
+                break;
+            case 'y':
+                if ((cval = optarg) > 0)
+                    domain_y = optarg;
+                else
+                    fprintf (stderr,
+                        "Invalid domain size '%d' :\
+                        dimension_y must be a positive integer.\n", cval);
+                break;
+            case 's':
+                if ((cval = optarg) > 0)
+                    steps = cval;
+                else
+                    frintf (stderr,
+                        "Invalid number of steps '%d' :\
+                        must be a positive integer.\n", cval);
+                break;
+        }
+    }
+
+    int blocks_x = 1;    
+    int threads_per_block = 1024;
+    c = MIN (1, threads_per_block / dimension_x);
+    int blocks_y = dimension_y / c;
+
+    dim3  grid(blocks_x, blocks_y);	            // CUDA grid dimensions
+    dim3  threads(threads_per_block / c, c);	// CUDA block dimensions
 
     // Allocation of arrays
     int * domain_gpu[2] = {NULL, NULL};

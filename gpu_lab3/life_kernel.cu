@@ -42,7 +42,8 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
      */
 
     //  read self
-    int myself = subdomain[tx_r + 1 + (ty_r + 1) * sm_x];
+    int pos = ((tx_r + 1) % domain_x) + ((ty_r + 1) % domain_y) * sm_x;
+    int myself, cell;
 
     int blue = 0, alive = 0;
 
@@ -53,25 +54,23 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
         for (int x_offset = -1 ; x_offset < 2 &&
                                 (!myself || (alive < 4)) ; x_offset++)
         {
-            //  ignore self
+            //  read self
             if (x_offset == 0 && y_offset == 0)
-                continue;
-
-            //  if 7 values have been read and no live neighbor was found, don't read the last value
-            if (y_offset == 1 && x_offset == 1 && alive == 0)
-                break;
-
-            switch (subdomain[tx_r + 1 + x_offset + (ty_r + 1 + y_offset) * sm_x])
+                myself = subdomain[pos];
+            else
             {
-                case 1: 
-                    alive++;
+                //  if 7 values have been read and no live neighbor was found, don't read the last value
+                if (y_offset == 1 && x_offset == 1 && alive == 0)
                     break;
-                case 2: 
+
+                cell = subdomain[pos + x_offset + y_offset * sm_x];
+                alive += cell;
+
+                if (cell == 2)
+                {
+                    alive--;
                     blue++;
-                    alive++;
-                    break;
-                default:    
-                    break;
+                }
             }
         }
     }
