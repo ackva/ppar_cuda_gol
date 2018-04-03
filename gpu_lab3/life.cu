@@ -77,7 +77,7 @@ int main(int argc, char ** argv)
                 break;
             case 'y':
                 if ((cval = atoi (optarg)) > 0)
-                    domain_y = optarg;
+                    domain_y = cval;
                 else
                     fprintf (stderr,
                         "Invalid domain size '%s' :\
