@@ -2,6 +2,8 @@
 #include "utils.h"
 #include <stdlib.h>
 #include <getopt.h>
+#include <ctype.h>
+#include <unistd.h>
 
 #include "life_kernel.cu"
 
@@ -85,7 +87,7 @@ int main(int argc, char ** argv)
                 if ((cval = optarg) > 0)
                     steps = cval;
                 else
-                    frintf (stderr,
+                    fprintf (stderr,
                         "Invalid number of steps '%d' :\
                         must be a positive integer.\n", cval);
                 break;
@@ -94,8 +96,8 @@ int main(int argc, char ** argv)
 
     int blocks_x = 1;    
     int threads_per_block = 1024;
-    c = MIN (1, threads_per_block / dimension_x);
-    int blocks_y = dimension_y / c;
+    c = MIN (1, threads_per_block / domain_x);
+    int blocks_y = domain_y / c;
 
     dim3  grid(blocks_x, blocks_y);	            // CUDA grid dimensions
     dim3  threads(threads_per_block / c, c);	// CUDA block dimensions

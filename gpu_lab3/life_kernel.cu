@@ -43,7 +43,7 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
 
     //  read self
     int pos = ((tx_r + 1) % domain_x) + ((ty_r + 1) % domain_y) * sm_x;
-    int myself, cell;
+    int myself = 0, cell;
 
     int blue = 0, alive = 0;
 
