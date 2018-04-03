@@ -22,7 +22,7 @@ __device__ int read_cell(int * source_domain, int x, int y, int dx, int dy,
  *  @param blue:        destination for the cell's blue neighbor count
  *
  */
-__device__ void read_values (int subdomain[][], int txr, int tyr,
+__device__ void read_values (int **subdomain, int txr, int tyr,
     int *self, int *alive, int *blue)
 {
     int self_ = 0, alive_ = 0, blue_ = 0, current;
@@ -34,7 +34,7 @@ __device__ void read_values (int subdomain[][], int txr, int tyr,
                                 && (!self_ || alive_ < 4) ; x_offset++)
         {
             if (y_offset == 1 && x_offset == 1)
-                self_ = subdomain[txr + 1][ty_r + 1];
+                self_ = subdomain[txr + 1][tyr + 1];
             else
             {
                 current = subdomain[tyr + y_offset][txr + x_offset];
