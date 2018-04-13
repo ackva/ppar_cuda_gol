@@ -16,18 +16,15 @@ __global__ void life_kernel(int * source_domain, int * dest_domain,
     int ty = blockIdx.y;
     
     // Read cell
-    int myself = read_cell(source_domain, tx, ty, 0, 0,
-	                       domain_x, domain_y);
+    int myself = read_cell(source_domain, tx, ty, 0, 0,domain_x, domain_y);
     
     // Read the 8 neighbors and count number of blue and red
     int blue = 0, red = 0, alive = 0;
 
     //  if the cell is not empty, break out on alive neighboor count exceeding 3
-    for (int x_offset = -1 ; x_offset < 2  &&
-                                (!myself || (alive < 4)) ; x_offset++)
+    for (int x_offset = -1 ; x_offset < 2  && (!myself || (alive < 4)) ; x_offset++)
     {
-        for (int y_offset = -1 ; y_offset < 2 &&
-                                (!myself || (alive < 4)) ; y_offset++)
+        for (int y_offset = -1 ; y_offset < 2 && (!myself || (alive < 4)) ; y_offset++)
         {
             //  ignore self
             if (x_offset == 0 && y_offset == 0)
