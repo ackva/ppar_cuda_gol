@@ -14,6 +14,7 @@
 #define DEFAULT_CELLS_PER_WORD 1
 
 #define MIN(x,y) ((x < y) ? x : y)
+#define MAX(x,y) ((x < y) ? y : x)
 
 void init_data(int * domain, int domain_x, int domain_y)
 {
@@ -54,8 +55,31 @@ void print_domain(int* domain, int domain_x, int domain_y, int* red, int* blue) 
 	}
 }
 
+/*
+ * Calculates the grid and blocks dimensions
+ *
+ * @param domain_x:     width of the domain
+ * @param domain_y:     height of the domain
+ * @param blockDim_x:   destination for the returned blocks dimensions along the x axis
+ * @param blockDim_y:   destination for the returned blocks dimensions along the y axis
+ * @param gridDim_x:    destination for the returned grid's dimensions along the x axis
+ * @param gridDim_x:    destination for the returned grid's dimensions along the y axis
+ */
+void calculate_grid (int domain_x, int domain_y,
+    int *blockDim_x, int *blockDim_y, int *gridDim_x, int *gridDim_y)
+{
+    //  32x32 blocks
+    *blockDim_x = WARP_SIZE;
+    *blockDim_y = WARP_SIZE;
+
+    *gridDim_x = domain_x / *blockDim_x;
+    *gridDim_y = domain_y / *blockDim_y;
+}
+
 int main(int argc, char ** argv)
 {
+    printf ("Game of Life starting ...\n");
+
     // Definition of parameters
     int domain_x = DEFAULT_DIM_X;
     int domain_y = DEFAULT_DIM_Y;
@@ -76,12 +100,12 @@ int main(int argc, char ** argv)
                         dimension_x must be a positive multiple of warp size (%d).\n", optarg, WARP_SIZE);
                 break;
             case 'y':
-                if ((cval = atoi (optarg)) > 0)
+                if ((cval = atoi (optarg)) % WARP_SIZE == 0 && cval > 0)
                     domain_y = cval;
                 else
-                    fprintf (stderr,
-                        "Invalid domain size '%s' :\
-                        dimension_y must be a positive integer.\n", optarg);
+                    fprintf (stderr, 
+                        "Invalid domain size '%s' : \
+                        dimension_y must be a positive multiple of warp size (%d).\n", optarg, WARP_SIZE);
                 break;
             case 's':
                 if ((cval = atoi (optarg)) > 0)
@@ -94,13 +118,24 @@ int main(int argc, char ** argv)
         }
     }
 
-    int blocks_x = 1;    
-    int threads_per_block = 1024;
-    c = MIN (1, threads_per_block / domain_x);
-    int blocks_y = domain_y / c;
+    printf ("\nUsing domain dimensions : %d x %d\n", domain_x, domain_y);
 
-    dim3  grid(blocks_x, blocks_y);	            // CUDA grid dimensions
-    dim3  threads(threads_per_block / c, c);	// CUDA block dimensions
+    /*
+    int blocks_x = 1;
+    int threads_per_block = 1024;
+    c = MAX (1, threads_per_block / domain_x);
+    int blocks_y = domain_y / c;
+    */
+    int blockDim_x, blockDim_y, gridDim_x, gridDim_y;
+    calculate_grid (domain_x, domain_y, &blockDim_x, &blockDim_y, &gridDim_x, &gridDim_y);
+
+    // CUDA grid dimensions
+    dim3  grid (gridDim_x, gridDim_y);
+    // CUDA block dimensions
+    dim3  threads (blockDim_x, blockDim_y);
+
+    printf ("\nUsing grid dimensions :\t\t%d x %d\
+        \n\tblock dimensions :\t%d x %d\n", grid.x, grid.y, threads.x, threads.y);
 
     // Allocation of arrays
     int * domain_gpu[2] = {NULL, NULL};
@@ -115,6 +150,14 @@ int main(int argc, char ** argv)
 	// Arrays of dimensions pitch * domain.y
 
 	init_data(domain_cpu, domain_x, domain_y);
+
+    // Count colors
+    int red = 0;
+    int blue = 0;
+    printf ("Original domain :\n");
+    print_domain(domain_cpu, domain_x, domain_y, &red, &blue);
+
+    //  Copy data to device global memory
     CUDA_SAFE_CALL(cudaMemcpy(domain_gpu[0], domain_cpu, domain_size, cudaMemcpyHostToDevice));
 
     // Timer initialization
@@ -156,8 +199,6 @@ int main(int argc, char ** argv)
     
 
     // Count colors
-    int red = 0;
-    int blue = 0;
     print_domain(domain_cpu, domain_x, domain_y, &red, &blue);
     printf("Red/Blue cells: %d/%d\n", red, blue);
     
