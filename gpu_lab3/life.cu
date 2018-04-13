@@ -1,3 +1,6 @@
+/* POTEL Martin
+   ACKVA Adrian */
+
 
 #include "utils.h"
 #include <stdlib.h>
